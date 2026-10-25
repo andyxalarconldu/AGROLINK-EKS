@@ -1,0 +1,79 @@
+# 00-kafka.yaml
+# Kafka de 1 broker en modo KRaft (sin Zookeeper).
+# Almacenamiento efímero (emptyDir): limitación del Learner Lab.
+# Cumple punto 4: base para el tópico de 3 particiones.
+# ==========================================================
+
+# ---------- PIEZA 1: SERVICE (la "dirección fija") ----------
+apiVersion: v1                  # versión de la API para este tipo de objeto
+kind: Service                   # tipo: Service = nombre DNS interno estable
+metadata:
+  name: kafka                   # las apps usarán "kafka:9092" para llegar aquí
+spec:
+  selector:
+    app: kafka                  # envía el tráfico a los pods con la etiqueta app=kafka
+  ports:
+    - name: broker
+      port: 9092                # puerto que usan las apps
+      targetPort: 9092          # puerto dentro del contenedor
+---
+# ---------- PIEZA 2: STATEFULSET (el pod de Kafka) ----------
+apiVersion: apps/v1
+kind: StatefulSet               # como un Deployment, pero con nombre fijo (kafka-0)
+metadata:
+  name: kafka
+spec:
+  serviceName: kafka            # se enlaza con el Service de arriba
+  replicas: 1                   # 1 solo broker (por costo y límites del lab)
+  selector:
+    matchLabels:
+      app: kafka                # "yo administro los pods con esta etiqueta"
+  template:                     # plantilla del pod que se va a crear
+    metadata:
+      labels:
+        app: kafka              # etiqueta que el Service busca
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:3.8.0   # imagen oficial, versión FIJA (no latest)
+          ports:
+            - containerPort: 9092     # puerto de clientes (productor y consumidores)
+            - containerPort: 9093     # puerto interno del controlador KRaft
+          env:                        # configuración de Kafka por variables de entorno
+            - name: KAFKA_NODE_ID
+              value: "1"                           # identificador de este broker
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"           # KRaft: un solo proceso hace ambas funciones
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@localhost:9093"            # quién vota en el controlador (solo él mismo)
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093"   # puertos donde escucha
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka:9092"      # dirección que Kafka da a los clientes
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"                  # cuál listener es del controlador
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"  # sin cifrado (red interna)
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"                   # listener para comunicación entre brokers
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"                           # con 1 broker, réplica 1 (si no, no arranca)
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"                           # igual: réplica 1
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"                           # mínimo de réplicas sincronizadas: 1
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "false"                       # NO crear tópicos solos: los creo yo con 3 particiones
+          resources:                  # punto 6: requests y limits
+            requests:                 # lo que se RESERVA para este pod
+              cpu: "250m"             # 0.25 de CPU
+              memory: "768Mi"
+            limits:                   # el TOPE que no puede superar
+              cpu: "1"
+              memory: "1Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data   # carpeta donde Kafka guarda mensajes
+      volumes:
+        - name: data
+          emptyDir: {}                # disco temporal del nodo (se borra si el pod se reinicia)
