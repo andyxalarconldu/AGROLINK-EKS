@@ -1,6 +1,5 @@
 # PRODUCTOR: recibe guías por HTTP y las publica en Kafka.
 # Swagger se genera solo en /docs
-# ==========================================================
 
 # --- Importaciones: las "herramientas" que usa el programa ---
 import os, json                          # os: leer variables de entorno; json: convertir a texto
@@ -16,7 +15,7 @@ BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP", "kafka:9092")  # dirección de Kaf
 TOPIC = os.environ.get("TOPIC", "despachos")                 # tópico donde publica
 
 # Crea la aplicación. El título aparece en Swagger (/docs)
-app = FastAPI(title="AgroLink - Productor de despachos", version="1.0")
+app = FastAPI(title="AgroLink - Productor de despachos", version="2.0")
 
 # acks=all: Kafka confirma solo cuando guardó el mensaje (no se pierde)
 producer = Producer({"bootstrap.servers": BOOTSTRAP, "acks": "all"})

@@ -1,0 +1,13 @@
+# 01-config.yaml
+# ConfigMap: configuración NO secreta de las apps.
+# Cumple punto 3: ConfigMap en k8s/.
+# ==========================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agrolink-config
+data:
+  KAFKA_BOOTSTRAP: "kafka:9092"                  # Service de Kafka (00-kafka.yaml)
+  DB_HOST: "agrolink-inventario.cihlxqtealhf.us-east-1.rds.amazonaws.com"               # RDS privado (output de Terraform)
+  DB_NAME: "inventario"
+  DB_USER: "agrolink"

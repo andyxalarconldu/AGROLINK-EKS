@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumidor-inventario
+spec:
+  replicas: 1                    # el HPA lo subirá hasta 3
+  selector:
+    matchLabels:
+      app: consumidor-inventario
+  template:
+    metadata:
+      labels:
+        app: consumidor-inventario
+    spec:
+      containers:
+        - name: consumidor-inventario
+          image: 674715791320.dkr.ecr.us-east-1.amazonaws.com/agrolink/consumidor-inventario:74e5959
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: agrolink-config
+          env:
+            - name: DB_PASSWORD          # variable que lee main.py
+              valueFrom:
+                secretKeyRef:            # el valor viene del Secret (punto 3)
+                  name: db-secret
+                  key: DB_PASSWORD
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:                # listo solo cuando ya se suscribió a Kafka
+            httpGet: { path: /ready, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consumidor-inventario
+spec:
+  type: ClusterIP                # solo interno: no se expone a Internet
+  selector:
+    app: consumidor-inventario
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler    # escalado horizontal automático
+metadata:
+  name: consumidor-inventario
+spec:
+  scaleTargetRef:                # a quién escala
+    apiVersion: apps/v1
+    kind: Deployment
+    name: consumidor-inventario
+  minReplicas: 1
+  maxReplicas: 3                 # = nº de particiones; un 4º pod quedaría ocioso
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50 # escala si el CPU promedio pasa del 50% del request
