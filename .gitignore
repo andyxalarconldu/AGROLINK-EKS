@@ -1,33 +1,42 @@
+@'
 # ==========================================================
-# .gitignore
-# Lista de archivos que Git NO debe subir al repositorio.
+# .gitignore · AgroLink (caso 2)
+# Lista de lo que Git NO debe subir al repositorio.
 # ==========================================================
 
 # ---------- TERRAFORM ----------
-# Carpeta con plugins descargados (pesa cientos de MB y se regenera con "init")
+# Plugins y módulos descargados: pesan cientos de MB y se regeneran con "terraform init"
 .terraform/
 
-# Estado local y sus copias: contienen datos sensibles (ej. contraseña de la BD)
+# Estado local y sus copias: contienen datos sensibles (por ejemplo, la contraseña de la BD)
 *.tfstate
 *.tfstate.*
 
-# Plan guardado: puede contener secretos
+# Archivo de bloqueo temporal del estado
+.terraform.tfstate.lock.info
+
+# Planes guardados: pueden contener secretos
 *.tfplan
 tfplan
 
-# Variables con valores reales (pueden tener secretos)
+# Variables con valores reales: pueden tener secretos
 *.tfvars
 *.tfvars.json
 
-# Logs de fallos
+# Archivos de sobrescritura local
+override.tf
+override.tf.json
+*_override.tf
+
+# Registros de fallos de Terraform
 crash.log
 crash.*.log
 
-# OJO: NO ignores ".terraform.lock.hcl".
-# Debe subirse: es la prueba de "versiones de proveedor fijadas".
+# IMPORTANTE: NO ignorar ".terraform.lock.hcl".
+# Debe subirse: es la prueba de las versiones de proveedor fijadas.
 
 # ---------- CREDENCIALES Y SECRETOS ----------
-# Nunca subir llaves de AWS ni archivos de secretos
+# Nunca subir llaves de AWS, certificados ni archivos de secretos
 .aws/
 credentials
 *.pem
@@ -38,6 +47,7 @@ secret*.yaml
 secrets/
 
 # ---------- PYTHON ----------
+# Caché y entornos virtuales: se regeneran solos
 __pycache__/
 *.pyc
 *.pyo
@@ -47,10 +57,22 @@ env/
 .pytest_cache/
 
 # ---------- DOCKER ----------
+# Imágenes exportadas a archivo
 *.tar
+
+# ---------- EVIDENCIAS Y TEMPORALES ----------
+# Capturas completas: pesadas y con datos de la cuenta de AWS.
+# Solo se sube docs/img/ (las imágenes del README) y docs/diagramas/
+docs/evidencias/
+
+# Respaldos y temporales
+*.zip
+*.log
+*.bak
 
 # ---------- EDITOR Y SISTEMA ----------
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+'@ | Set-Content -Encoding utf8 .gitignore
